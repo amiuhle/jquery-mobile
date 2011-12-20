@@ -1,44 +1,60 @@
 /*
-* jQuery Mobile Framework : "collapsible" plugin
-* Copyright (c) jQuery Project
-* Dual licensed under the MIT or GPL Version 2 licenses.
-* http://jquery.org/license
+* "collapsible" plugin
 */
-( function( $, undefined ) {
+
+(function( $, undefined ) {
+
 $.widget( "mobile.collapsible", $.mobile.widget, {
 	options: {
 		expandCueText: " click to expand contents",
 		collapseCueText: " click to collapse contents",
-		collapsed: false,
-		heading: ">:header,>legend",
+		collapsed: true,
+		heading: "h1,h2,h3,h4,h5,h6,legend",
 		theme: null,
-		iconTheme: "d"
+		contentTheme: null,
+		iconTheme: "d",
+		initSelector: ":jqmData(role='collapsible')"
 	},
 	_create: function() {
 
 		var $el = this.element,
 			o = this.options,
-			collapsibleContain = $el.addClass( "ui-collapsible-contain" ),
-			collapsibleHeading = $el.find( o.heading ).eq( 0 ),
-			collapsibleContent = collapsibleContain.wrapInner( '<div class="ui-collapsible-content"></div>' ).find( ".ui-collapsible-content" ),
-			collapsibleParent = $el.closest( ":jqmData(role='collapsible-set')" ).addClass( "ui-collapsible-set" );
+			collapsible = $el.addClass( "ui-collapsible" ),
+			collapsibleHeading = $el.children( o.heading ).first(),
+			collapsibleContent = collapsible.wrapInner( "<div class='ui-collapsible-content'></div>" ).find( ".ui-collapsible-content" ),
+			collapsibleSet = $el.closest( ":jqmData(role='collapsible-set')" ).addClass( "ui-collapsible-set" );
 
-		//replace collapsibleHeading if it's a legend
+		// Replace collapsibleHeading if it's a legend
 		if ( collapsibleHeading.is( "legend" ) ) {
-			collapsibleHeading = $( '<div role="heading">'+ collapsibleHeading.html() +"</div>" ).insertBefore( collapsibleHeading );
+			collapsibleHeading = $( "<div role='heading'>"+ collapsibleHeading.html() +"</div>" ).insertBefore( collapsibleHeading );
 			collapsibleHeading.next().remove();
 		}
+
+		// If we are in a collapsible set
+		if ( collapsibleSet.length ) {
+			// Inherit the theme from collapsible-set
+			if ( !o.theme ) {
+				o.theme = collapsibleSet.jqmData( "theme" );
+			}
+			// Inherit the content-theme from collapsible-set
+			if ( !o.contentTheme ) {
+				o.contentTheme = collapsibleSet.jqmData( "content-theme" );
+			}
+		}
+
+		collapsibleContent.addClass( ( o.contentTheme ) ? ( "ui-body-" + o.contentTheme ) : "");
 
 		collapsibleHeading
 			//drop heading in before content
 			.insertBefore( collapsibleContent )
 			//modify markup & attributes
 			.addClass( "ui-collapsible-heading" )
-			.append( '<span class="ui-collapsible-heading-status"></span>' )
-			.wrapInner( '<a href="#" class="ui-collapsible-heading-toggle"></a>' )
-			.find( "a:eq(0)" )
-				.buttonMarkup( {
-					shadow: !collapsibleParent.length,
+			.append( "<span class='ui-collapsible-heading-status'></span>" )
+			.wrapInner( "<a href='#' class='ui-collapsible-heading-toggle'></a>" )
+			.find( "a" )
+				.first()
+				.buttonMarkup({
+					shadow: false,
 					corners: false,
 					iconPos: "left",
 					icon: "plus",
@@ -54,29 +70,30 @@ $.widget( "mobile.collapsible", $.mobile.widget, {
 						theme: o.iconTheme
 					} );
 
-
 		//events
-		collapsibleContain
-			.bind( "collapse", function( event ) {
-				if ( ! event.isDefaultPrevented() && $( event.target ).closest( ".ui-collapsible-contain" ).is( collapsibleContain ) ) {
+		collapsible
+			.bind( "expand collapse", function( event ) {
+				if ( !event.isDefaultPrevented() ) {
+
 					event.preventDefault();
+
+					var $this = $( this ),
+						isCollapse = ( event.type === "collapse" ),
+					    contentTheme = o.contentTheme;
+
 					collapsibleHeading
-						.addClass( "ui-collapsible-heading-collapsed" )
+						.toggleClass( "ui-collapsible-heading-collapsed", isCollapse)
 						.find( ".ui-collapsible-heading-status" )
-							.text( o.expandCueText )
+							.text( isCollapse ? o.expandCueText : o.collapseCueText )
 						.end()
 						.find( ".ui-icon" )
-							.removeClass( "ui-icon-minus" )
-							.addClass( "ui-icon-plus" );
-					collapsibleContent.addClass( "ui-collapsible-content-collapsed" ).attr( "aria-hidden", true );
+							.toggleClass( "ui-icon-minus", !isCollapse )
+							.toggleClass( "ui-icon-plus", isCollapse );
 
-					if ( collapsibleContain.jqmData( "collapsible-last" ) ) {
-						collapsibleHeading
-							.find( "a:eq(0), .ui-btn-inner" )
-							.addClass( "ui-corner-bottom" );
-					}
-				}
+					$this.toggleClass( "ui-collapsible-collapsed", isCollapse );
+					collapsibleContent.toggleClass( "ui-collapsible-content-collapsed", isCollapse ).attr( "aria-hidden", isCollapse );
 
+<<<<<<< HEAD
 			} )
 			.bind( "expand", function( event ) {
 				if ( ! event.isDefaultPrevented() ) {
@@ -89,37 +106,37 @@ $.widget( "mobile.collapsible", $.mobile.widget, {
 					collapsibleContent.removeClass( "ui-collapsible-content-collapsed" ).attr( "aria-hidden", false );
 
 					if ( collapsibleContain.jqmData( "collapsible-last" ) ) {
+=======
+					if ( contentTheme && ( !collapsibleSet.length || collapsible.jqmData( "collapsible-last" ) ) ) {
+>>>>>>> f5c5c9a19ae70ae8ed49db92f265f5f9d762b143
 						collapsibleHeading
-							.find( "a:eq(0), .ui-btn-inner" )
-							.removeClass( "ui-corner-bottom" );
+							.find( "a" ).first().add( collapsibleHeading.find( ".ui-btn-inner" ) )
+							.toggleClass( "ui-corner-bottom", isCollapse );
+						collapsibleContent.toggleClass( "ui-corner-bottom", !isCollapse );
 					}
+					collapsibleContent.trigger( "updatelayout" );
 				}
-			} )
+			})
 			.trigger( o.collapsed ? "collapse" : "expand" );
 
+		collapsibleHeading
+			.bind( "click", function( event ) {
 
-		//close others in a set
-		if ( collapsibleParent.length && !collapsibleParent.jqmData( "collapsiblebound" ) ) {
-			collapsibleParent
-				.jqmData( "collapsiblebound", true )
-				.bind( "expand", function( event ){
-					
-					$( event.target )
-						.closest( ".ui-collapsible-contain" )
-						.siblings( ".ui-collapsible-contain" )
-						.trigger( "collapse" );
-					
-				} );
+				var type = collapsibleHeading.is( ".ui-collapsible-heading-collapsed" ) ?
+										"expand" : "collapse";
 
-
+<<<<<<< HEAD
 			var set = collapsibleParent.find( ":jqmData(role='collapsible')" );
+=======
+				collapsible.trigger( type );
+>>>>>>> f5c5c9a19ae70ae8ed49db92f265f5f9d762b143
 
-			set.first()
-				.find( "a:eq(0)" )
-					.addClass( "ui-corner-top" )
-						.find( ".ui-btn-inner" )
-							.addClass( "ui-corner-top" );
+				event.preventDefault();
+			});
+	}
+});
 
+<<<<<<< HEAD
 			set.last().jqmData( "collapsible-last", true );
 		}
 		
@@ -137,17 +154,11 @@ $.widget( "mobile.collapsible", $.mobile.widget, {
               .addClass( "ui-corner-bottom" );
         }
       }
+=======
+//auto self-init widgets
+$( document ).bind( "pagecreate create", function( e ){
+	$( $.mobile.collapsible.prototype.options.initSelector, e.target ).collapsible();
+});
+>>>>>>> f5c5c9a19ae70ae8ed49db92f265f5f9d762b143
 
-		collapsibleHeading
-			.bind( "vclick", function( e ) {
-				if ( collapsibleHeading.is( ".ui-collapsible-heading-collapsed" ) ) {
-					collapsibleContain.trigger( "expand" );
-				}
-				else {
-					collapsibleContain.trigger( "collapse" );
-				}
-				e.preventDefault();
-			} );
-	}
-} );
-} )( jQuery );
+})( jQuery );

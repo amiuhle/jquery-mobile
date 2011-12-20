@@ -1,69 +1,68 @@
-/*!
- * jQuery Mobile v@VERSION
- * http://jquerymobile.com/
- *
- * Copyright 2010, jQuery Project
- * Dual licensed under the MIT or GPL Version 2 licenses.
- * http://jquery.org/license
- */
+/*
+* "core" - The base file for jQm
+*/
 
 (function( $, window, undefined ) {
 
-	//jQuery.mobile configurable options
+	var nsNormalizeDict = {};
+
+	// jQuery.mobile configurable options
 	$.extend( $.mobile, {
 
-		//namespace used framework-wide for data-attrs. Default is no namespace
+		// Namespace used framework-wide for data-attrs. Default is no namespace
 		ns: "",
 
-		//define the url parameter used for referencing widget-generated sub-pages.
-		//Translates to to example.html&ui-page=subpageIdentifier
-		//hash segment before &ui-page= is used to make Ajax request
+		// Define the url parameter used for referencing widget-generated sub-pages.
+		// Translates to to example.html&ui-page=subpageIdentifier
+		// hash segment before &ui-page= is used to make Ajax request
 		subPageUrlKey: "ui-page",
 
-		//anchor links with a data-rel, or pages with a	 data-role, that match these selectors will be untrackable in history
-		//(no change in URL, not bookmarkable)
-		nonHistorySelectors: "dialog",
-
-		//class assigned to page currently in view, and during transitions
+		// Class assigned to page currently in view, and during transitions
 		activePageClass: "ui-page-active",
 
-		//class used for "active" button state, from CSS framework
+		// Class used for "active" button state, from CSS framework
 		activeBtnClass: "ui-btn-active",
 
-		//automatically handle clicks and form submissions through Ajax, when same-domain
+		// Automatically handle clicks and form submissions through Ajax, when same-domain
 		ajaxEnabled: true,
-		
-		//When enabled, clicks and taps that result in Ajax page changes will happen slightly sooner on touch devices.
-		//Also, it will prevent the address bar from appearing on platforms like iOS during page transitions.
-		//This option has no effect on non-touch devices, but enabling it may interfere with jQuery plugins that bind to click events
-		useFastClick: true,
 
-		//automatically load and show pages based on location.hash
+		// Automatically load and show pages based on location.hash
 		hashListeningEnabled: true,
 
-		//set default page transition - 'none' for no transitions
-		defaultPageTransition: "slide",
-		
-		//minimum scroll distance that will be remembered when returning to a page
-		minScrollBack: screen.height / 2,
+		// disable to prevent jquery from bothering with links
+		linkBindingEnabled: true,
 
-		//set default dialog transition - 'none' for no transitions
+		// Set default page transition - 'none' for no transitions
+		defaultPageTransition: "slide",
+
+		// Minimum scroll distance that will be remembered when returning to a page
+		minScrollBack: 250,
+
+		// Set default dialog transition - 'none' for no transitions
 		defaultDialogTransition: "pop",
 
-		//show loading message during Ajax requests
-		//if false, message will not appear, but loading classes will still be toggled on html el
+		// Show loading message during Ajax requests
+		// if false, message will not appear, but loading classes will still be toggled on html el
 		loadingMessage: "loading",
 
-		//error response message - appears when an Ajax page request fails
+		// Error response message - appears when an Ajax page request fails
 		pageLoadErrorMessage: "Error Loading Page",
 
-		//support conditions that must be met in order to proceed
-		//default enhanced qualifications are media query support OR IE 7+
+		//automatically initialize the DOM when it's ready
+		autoInitializePage: true,
+
+		pushStateEnabled: true,
+
+		// turn of binding to the native orientationchange due to android orientation behavior
+		orientationChangeEnabled: true,
+
+		// Support conditions that must be met in order to proceed
+		// default enhanced qualifications are media query support OR IE 7+
 		gradeA: function(){
 			return $.support.mediaquery || $.mobile.browser.ie && $.mobile.browser.ie >= 7;
 		},
 
-		//TODO might be useful upstream in jquery itself ?
+		// TODO might be useful upstream in jquery itself ?
 		keyCode: {
 			ALT: 18,
 			BACKSPACE: 8,
@@ -99,9 +98,9 @@
 			WINDOWS: 91 // COMMAND
 		},
 
-		//scroll page vertically: scroll to 0 to hide iOS address bar, or pass a Y value
+		// Scroll page vertically: scroll to 0 to hide iOS address bar, or pass a Y value
 		silentScroll: function( ypos ) {
-			if( $.type( ypos ) !== "number" ){
+			if ( $.type( ypos ) !== "number" ) {
 				ypos = $.mobile.defaultHomeScroll;
 			}
 
@@ -110,53 +109,130 @@
 
 			setTimeout(function() {
 				window.scrollTo( 0, ypos );
-				$(document).trigger( "silentscroll", { x: 0, y: ypos });
-			},20);
+				$( document ).trigger( "silentscroll", { x: 0, y: ypos });
+			}, 20 );
 
 			setTimeout(function() {
 				$.event.special.scrollstart.enabled = true;
 			}, 150 );
 		},
 
-		// compile the namespace normalization regex once
-		normalizeRegex: /-([a-z])/g,
+		// Expose our cache for testing purposes.
+		nsNormalizeDict: nsNormalizeDict,
 
-		// take a data attribute property, prepend the namespace
-		// and then camel case the attribute string
-		nsNormalize: function(prop){
-			if(!prop) return;
+		// Take a data attribute property, prepend the namespace
+		// and then camel case the attribute string. Add the result
+		// to our nsNormalizeDict so we don't have to do this again.
+		nsNormalize: function( prop ) {
+			if ( !prop ) {
+				return;
+			}
 
-			return $.camelCase( $.mobile.ns + prop );
+			return nsNormalizeDict[ prop ] || ( nsNormalizeDict[ prop ] = $.camelCase( $.mobile.ns + prop ) );
+		},
+
+		getInheritedTheme: function( el, defaultTheme ) {
+
+			// Find the closest parent with a theme class on it. Note that
+			// we are not using $.fn.closest() on purpose here because this
+			// method gets called quite a bit and we need it to be as fast
+			// as possible.
+
+			var e = el[ 0 ],
+				ltr = "",
+				re = /ui-(bar|body)-([a-z])\b/,
+				c, m;
+
+			while ( e ) {
+				var c = e.className || "";
+				if ( ( m = re.exec( c ) ) && ( ltr = m[ 2 ] ) ) {
+					// We found a parent with a theme class
+					// on it so bail from this loop.
+					break;
+				}
+				e = e.parentNode;
+			}
+
+			// Return the theme letter we found, if none, return the
+			// specified default.
+
+			return ltr || defaultTheme || "a";
+		},
+
+		// TODO the following $ and $.fn extensions can/probably should be moved into jquery.mobile.core.helpers
+		//
+		// Find the closest javascript page element to gather settings data jsperf test
+		// http://jsperf.com/single-complex-selector-vs-many-complex-selectors/edit
+		// possibly naive, but it shows that the parsing overhead for *just* the page selector vs
+		// the page and dialog selector is negligable. This could probably be speed up by
+		// doing a similar parent node traversal to the one found in the inherited theme code above
+		closestPageData: function( $target ) {
+			return $target
+				.closest(':jqmData(role="page"), :jqmData(role="dialog")')
+				.data("page");
 		}
 	});
 
-	//mobile version of data and removeData and hasData methods
-	//ensures all data is set and retrieved using jQuery Mobile's data namespace
-	$.fn.jqmData = function( prop, value ){
-		return this.data( prop ? $.mobile.nsNormalize(prop) : prop, value );
+	// Mobile version of data and removeData and hasData methods
+	// ensures all data is set and retrieved using jQuery Mobile's data namespace
+	$.fn.jqmData = function( prop, value ) {
+		var result;
+		if ( typeof prop != "undefined" ) {
+			result = this.data( prop ? $.mobile.nsNormalize( prop ) : prop, value );
+		}
+		return result;
 	};
 
-	$.jqmData = function( elem, prop, value ){
-		return $.data( elem, $.mobile.nsNormalize(prop), value );
+	$.jqmData = function( elem, prop, value ) {
+		var result;
+		if ( typeof prop != "undefined" ) {
+			result = $.data( elem, prop ? $.mobile.nsNormalize( prop ) : prop, value );
+		}
+		return result;
 	};
 
-	$.fn.jqmRemoveData = function( prop ){
-		return this.removeData( $.mobile.nsNormalize(prop) );
+	$.fn.jqmRemoveData = function( prop ) {
+		return this.removeData( $.mobile.nsNormalize( prop ) );
 	};
 
-	$.jqmRemoveData = function( elem, prop ){
-		return $.removeData( elem, $.mobile.nsNormalize(prop) );
+	$.jqmRemoveData = function( elem, prop ) {
+		return $.removeData( elem, $.mobile.nsNormalize( prop ) );
 	};
 
-	$.jqmHasData = function( elem, prop ){
-		return $.hasData( elem, $.mobile.nsNormalize(prop) );
+	$.fn.removeWithDependents = function() {
+		$.removeWithDependents( this );
+	};
+
+	$.removeWithDependents = function( elem ) {
+		var $elem = $( elem );
+
+		( $elem.jqmData('dependents') || $() ).remove();
+		$elem.remove();
+	};
+
+	$.fn.addDependents = function( newDependents ) {
+		$.addDependents( $(this), newDependents );
+	};
+
+	$.addDependents = function( elem, newDependents ) {
+		var dependents = $(elem).jqmData( 'dependents' ) || $();
+
+		$(elem).jqmData( 'dependents', $.merge(dependents, newDependents) );
+	};
+
+	// note that this helper doesn't attempt to handle the callback
+	// or setting of an html elements text, its only purpose is
+	// to return the html encoded version of the text in all cases. (thus the name)
+	$.fn.getEncodedText = function() {
+		return $( "<div/>" ).text( $(this).text() ).html();
 	};
 
 	// Monkey-patching Sizzle to filter the :jqmData selector
-	var oldFind = $.find;
+	var oldFind = $.find,
+		jqmDataRE = /:jqmData\(([^)]*)\)/g;
 
 	$.find = function( selector, context, ret, extra ) {
-		selector = selector.replace(/:jqmData\(([^)]*)\)/g, "[data-" + ($.mobile.ns || "") + "$1]");
+		selector = selector.replace( jqmDataRE, "[data-" + ( $.mobile.ns || "" ) + "$1]" );
 
 		return oldFind.call( this, selector, context, ret, extra );
 	};
@@ -168,6 +244,7 @@
 	};
 
 	$.find.matchesSelector = function( node, expr ) {
-		return $.find( expr, null, null, [node] ).length > 0;
+		return $.find( expr, null, null, [ node ] ).length > 0;
 	};
 })( jQuery, this );
+

@@ -1,9 +1,7 @@
 /*
-* jQuery Mobile Framework : core utilities for auto ajax navigation, base tag mgmt,
-* Copyright (c) jQuery Project
-* Dual licensed under the MIT or GPL Version 2 licenses.
-* http://jquery.org/license
+* core utilities for auto ajax navigation, base tag mgmt,
 */
+
 ( function( $, undefined ) {
 
 	//define vars for interal use
@@ -25,58 +23,56 @@
 			//     [2]: http://jblas:password@mycompany.com:8080/mail/inbox
 			//     [3]: http://jblas:password@mycompany.com:8080
 			//     [4]: http:
-			//     [5]: jblas:password@mycompany.com:8080
-			//     [6]: jblas:password
-			//     [7]: jblas
-			//     [8]: password
-			//     [9]: mycompany.com:8080
-			//    [10]: mycompany.com
-			//    [11]: 8080
-			//    [12]: /mail/inbox
-			//    [13]: /mail/
-			//    [14]: inbox
-			//    [15]: ?msg=1234&type=unread
-			//    [16]: #msg-content
+			//     [5]: //
+			//     [6]: jblas:password@mycompany.com:8080
+			//     [7]: jblas:password
+			//     [8]: jblas
+			//     [9]: password
+			//    [10]: mycompany.com:8080
+			//    [11]: mycompany.com
+			//    [12]: 8080
+			//    [13]: /mail/inbox
+			//    [14]: /mail/
+			//    [15]: inbox
+			//    [16]: ?msg=1234&type=unread
+			//    [17]: #msg-content
 			//
-			urlParseRE: /^(((([^:\/#\?]+:)?(?:\/\/((?:(([^:@\/#\?]+)(?:\:([^:@\/#\?]+))?)@)?(([^:\/#\?]+)(?:\:([0-9]+))?))?)?)?((\/?(?:[^\/\?#]+\/+)*)([^\?#]*)))?(\?[^#]+)?)(#.*)?/,
+			urlParseRE: /^(((([^:\/#\?]+:)?(?:(\/\/)((?:(([^:@\/#\?]+)(?:\:([^:@\/#\?]+))?)@)?(([^:\/#\?\]\[]+|\[[^\/\]@#?]+\])(?:\:([0-9]+))?))?)?)?((\/?(?:[^\/\?#]+\/+)*)([^\?#]*)))?(\?[^#]+)?)(#.*)?/,
 
 			//Parse a URL into a structure that allows easy access to
 			//all of the URL components by name.
 			parseUrl: function( url ) {
 				// If we're passed an object, we'll assume that it is
 				// a parsed url object and just return it back to the caller.
-				if ( typeof url === "object" ) {
+				if ( $.type( url ) === "object" ) {
 					return url;
 				}
 
-				var u = url || "",
-					matches = path.urlParseRE.exec( url ),
-					results;
-				if ( matches ) {
+				var matches = path.urlParseRE.exec( url || "" ) || [];
+
 					// Create an object that allows the caller to access the sub-matches
 					// by name. Note that IE returns an empty string instead of undefined,
 					// like all other browsers do, so we normalize everything so its consistent
 					// no matter what browser we're running on.
-					results = {
-						href:         matches[0] || "",
-						hrefNoHash:   matches[1] || "",
-						hrefNoSearch: matches[2] || "",
-						domain:       matches[3] || "",
-						protocol:     matches[4] || "",
-						authority:    matches[5] || "",
-						username:     matches[7] || "",
-						password:     matches[8] || "",
-						host:         matches[9] || "",
-						hostname:     matches[10] || "",
-						port:         matches[11] || "",
-						pathname:     matches[12] || "",
-						directory:    matches[13] || "",
-						filename:     matches[14] || "",
-						search:       matches[15] || "",
-						hash:         matches[16] || ""
+					return {
+						href:         matches[  0 ] || "",
+						hrefNoHash:   matches[  1 ] || "",
+						hrefNoSearch: matches[  2 ] || "",
+						domain:       matches[  3 ] || "",
+						protocol:     matches[  4 ] || "",
+						doubleSlash:  matches[  5 ] || "",
+						authority:    matches[  6 ] || "",
+						username:     matches[  8 ] || "",
+						password:     matches[  9 ] || "",
+						host:         matches[ 10 ] || "",
+						hostname:     matches[ 11 ] || "",
+						port:         matches[ 12 ] || "",
+						pathname:     matches[ 13 ] || "",
+						directory:    matches[ 14 ] || "",
+						filename:     matches[ 15 ] || "",
+						search:       matches[ 16 ] || "",
+						hash:         matches[ 17 ] || ""
 					};
-				}
-				return results || {};
 			},
 
 			//Turn relPath into an asbolute path. absPath is
@@ -86,10 +82,10 @@
 				if ( relPath && relPath.charAt( 0 ) === "/" ) {
 					return relPath;
 				}
-		
+
 				relPath = relPath || "";
-				absPath = absPath ? absPath.replace( /^\/|\/?[^\/]*$/g, "" ) : "";
-		
+				absPath = absPath ? absPath.replace( /^\/|(\/[^\/]*|[^\/]+)$/g, "" ) : "";
+
 				var absStack = absPath ? absPath.split( "/" ) : [],
 					relStack = relPath.split( "/" );
 				for ( var i = 0; i < relStack.length; i++ ) {
@@ -132,17 +128,18 @@
 				if ( !path.isRelativeUrl( relUrl ) ) {
 					return relUrl;
 				}
-		
+
 				var relObj = path.parseUrl( relUrl ),
 					absObj = path.parseUrl( absUrl ),
 					protocol = relObj.protocol || absObj.protocol,
+					doubleSlash = relObj.protocol ? relObj.doubleSlash : ( relObj.doubleSlash || absObj.doubleSlash ),
 					authority = relObj.authority || absObj.authority,
 					hasPath = relObj.pathname !== "",
 					pathname = path.makePathAbsolute( relObj.pathname || absObj.filename, absObj.pathname ),
 					search = relObj.search || ( !hasPath && absObj.search ) || "",
 					hash = relObj.hash;
-		
-				return protocol + "//" + authority + pathname + search + hash;
+
+				return protocol + doubleSlash + authority + pathname + search + hash;
 			},
 
 			//Add search (aka query) params to the specified url.
@@ -156,7 +153,9 @@
 			convertUrlToDataUrl: function( absUrl ) {
 				var u = path.parseUrl( absUrl );
 				if ( path.isEmbeddedPage( u ) ) {
-					return u.hash.replace( /^#/, "" );
+				    // For embedded pages, remove the dialog hash key as in getFilePath(),
+				    // otherwise the Data Url won't match the id of the embedded Page.
+					return u.hash.split( dialogHashKey )[0].replace( /^#/, "" );
 				} else if ( path.isSameDomain( u, documentBase ) ) {
 					return u.hrefNoHash.replace( documentBase.domain, "" );
 				}
@@ -214,6 +213,26 @@
 				return ( /^(:?\w+:)/ ).test( url );
 			},
 
+			//check if the specified url refers to the first page in the main application document.
+			isFirstPageUrl: function( url ) {
+				// We only deal with absolute paths.
+				var u = path.parseUrl( path.makeUrlAbsolute( url, documentBase ) ),
+
+					// Does the url have the same path as the document?
+					samePath = u.hrefNoHash === documentUrl.hrefNoHash || ( documentBaseDiffers && u.hrefNoHash === documentBase.hrefNoHash ),
+
+					// Get the first page element.
+					fp = $.mobile.firstPage,
+
+					// Get the id of the first page element if it has one.
+					fpId = fp && fp[0] ? fp[0].id : undefined;
+
+					// The url refers to the first page if the path matches the document and
+					// it either has no hash value, or the hash is exactly equal to the id of the
+					// first page element.
+					return samePath && ( !u.hash || u.hash === "#" || ( fpId && u.hash.replace( /^#/, "" ) === fpId ) );
+			},
+
 			isEmbeddedPage: function( url ) {
 				var u = path.parseUrl( url );
 
@@ -235,7 +254,8 @@
 		//urlHistory is purely here to make guesses at whether the back or forward button was clicked
 		//and provide an appropriate transition
 		urlHistory = {
-			//array of pages that are visited during a single page load. each has a url and optional transition
+			// Array of pages that are visited during a single page load.
+			// Each has a url and optional transition, title, and pageUrl (which represents the file path, in cases where URL is obscured, such as dialogs)
 			stack: [],
 
 			//maintain an index number for the active page in the stack
@@ -255,13 +275,13 @@
 			},
 
 			// addNew is used whenever a new page is added
-			addNew: function( url, transition, title, storedTo ) {
+			addNew: function( url, transition, title, pageUrl, role ) {
 				//if there's forward history, wipe it
 				if( urlHistory.getNext() ) {
 					urlHistory.clearForward();
 				}
 
-				urlHistory.stack.push( {url : url, transition: transition, title: title, page: storedTo } );
+				urlHistory.stack.push( {url : url, transition: transition, title: title, pageUrl: pageUrl, role: role } );
 
 				urlHistory.activeIndex = urlHistory.stack.length - 1;
 			},
@@ -272,7 +292,7 @@
 			},
 
 			directHashChange: function( opts ) {
-				var back , forward, newActiveIndex;
+				var back , forward, newActiveIndex, prev = this.getActive();
 
 				// check if url isp in history and if it's ahead or behind current page
 				$.each( urlHistory.stack, function( i, historyEntry ) {
@@ -290,9 +310,9 @@
 				this.activeIndex = newActiveIndex !== undefined ? newActiveIndex : this.activeIndex;
 
 				if( back ) {
-					opts.isBack();
+					( opts.either || opts.isBack )( true );
 				} else if( forward ) {
-					opts.isForward();
+					( opts.either || opts.isForward )( false );
 				}
 			},
 
@@ -351,20 +371,13 @@
 
 	//direct focus to the page title, or otherwise first focusable element
 	function reFocus( page ) {
-		var lastClicked = page.jqmData( "lastClicked" );
+		var pageTitle = page.find( ".ui-title:eq(0)" );
 
-		if( lastClicked && lastClicked.length ) {
-			lastClicked.focus();
+		if( pageTitle.length ) {
+			pageTitle.focus();
 		}
-		else {
-			var pageTitle = page.find( ".ui-title:eq(0)" );
-
-			if( pageTitle.length ) {
-				pageTitle.focus();
-			}
-			else{
-				page.find( focusable ).eq( 0 ).focus();
-			}
+		else{
+			page.focus();
 		}
 	}
 
@@ -383,40 +396,135 @@
 		}
 	}
 
+	// Save the last scroll distance per page, before it is hidden
+	var setLastScrollEnabled = true,
+		firstScrollElem, getScrollElem, setLastScroll, delayedSetLastScroll;
+
+	getScrollElem = function() {
+		var scrollElem = $window, activePage,
+			touchOverflow = $.support.touchOverflow && $.mobile.touchOverflowEnabled;
+
+		if( touchOverflow ){
+			activePage = $( ".ui-page-active" );
+			scrollElem = activePage.is( ".ui-native-fixed" ) ? activePage.find( ".ui-content" ) : activePage;
+		}
+
+		return scrollElem;
+	};
+
+	setLastScroll = function( scrollElem ) {
+		// this barrier prevents setting the scroll value based on the browser
+		// scrolling the window based on a hashchange
+		if( !setLastScrollEnabled ) {
+			return;
+		}
+
+		var active = $.mobile.urlHistory.getActive();
+
+		if( active ) {
+			var lastScroll = scrollElem && scrollElem.scrollTop();
+
+			// Set active page's lastScroll prop.
+			// If the location we're scrolling to is less than minScrollBack, let it go.
+			active.lastScroll = lastScroll < $.mobile.minScrollBack ? $.mobile.defaultHomeScroll : lastScroll;
+		}
+	};
+
+	// bind to scrollstop to gather scroll position. The delay allows for the hashchange
+	// event to fire and disable scroll recording in the case where the browser scrolls
+	// to the hash targets location (sometimes the top of the page). once pagechange fires
+	// getLastScroll is again permitted to operate
+	delayedSetLastScroll = function() {
+		setTimeout( setLastScroll, 100, $(this) );
+	};
+
+	// disable an scroll setting when a hashchange has been fired, this only works
+	// because the recording of the scroll position is delayed for 100ms after
+	// the browser might have changed the position because of the hashchange
+	$window.bind( $.support.pushState ? "popstate" : "hashchange", function() {
+	 	setLastScrollEnabled = false;
+	});
+
+	// handle initial hashchange from chrome :(
+	$window.one( $.support.pushState ? "popstate" : "hashchange", function() {
+		setLastScrollEnabled = true;
+	});
+
+	// wait until the mobile page container has been determined to bind to pagechange
+	$window.one( "pagecontainercreate", function(){
+		// once the page has changed, re-enable the scroll recording
+		$.mobile.pageContainer.bind( "pagechange", function() {
+			var scrollElem = getScrollElem();
+
+	 		setLastScrollEnabled = true;
+
+			// remove any binding that previously existed on the get scroll
+			// which may or may not be different than the scroll element determined for
+			// this page previously
+			scrollElem.unbind( "scrollstop", delayedSetLastScroll );
+
+			// determine and bind to the current scoll element which may be the window
+			// or in the case of touch overflow the element with touch overflow
+			scrollElem.bind( "scrollstop", delayedSetLastScroll );
+		});
+	});
+
+	// bind to scrollstop for the first page as "pagechange" won't be fired in that case
+	getScrollElem().bind( "scrollstop", delayedSetLastScroll );
+
+	// Make the iOS clock quick-scroll work again if we're using native overflow scrolling
+	/*
+	if( $.support.touchOverflow ){
+		if( $.mobile.touchOverflowEnabled ){
+			$( window ).bind( "scrollstop", function(){
+				if( $( this ).scrollTop() === 0 ){
+					$.mobile.activePage.scrollTop( 0 );
+				}
+			});
+		}
+	}
+	*/
+
 	//function for transitioning between two existing pages
 	function transitionPages( toPage, fromPage, transition, reverse ) {
-		
+
 		//get current scroll distance
-		var currScroll = $.support.scrollTop ? $window.scrollTop() : true,
-			toScroll	= toPage.data( "lastScroll" ) || $.mobile.defaultHomeScroll,
+		var active	= $.mobile.urlHistory.getActive(),
+			touchOverflow = $.support.touchOverflow && $.mobile.touchOverflowEnabled,
+			toScroll = active.lastScroll || ( touchOverflow ? 0 : $.mobile.defaultHomeScroll ),
 			screenHeight = getScreenHeight();
-		
-		//if scrolled down, scroll to top
-		if( currScroll ){
-			window.scrollTo( 0, $.mobile.defaultHomeScroll );
-		}
-		
-		//if the Y location we're scrolling to is less than 10px, let it go for sake of smoothness
-		if( toScroll < $.mobile.minScrollBack ){
-			toScroll = 0;
-		}
-		
+
+		// Scroll to top, hide addr bar
+		window.scrollTo( 0, $.mobile.defaultHomeScroll );
+
 		if( fromPage ) {
-			//set as data for returning to that spot
-			fromPage
-				.height( screenHeight + currScroll )
-				.jqmData( "lastScroll", currScroll )
-				.jqmData( "lastClicked", $activeClickedLink );
-				
 			//trigger before show/hide events
 			fromPage.data( "page" )._trigger( "beforehide", null, { nextPage: toPage } );
 		}
-		toPage
-			.height( screenHeight + toScroll )
-			.data( "page" )._trigger( "beforeshow", null, { prevPage: fromPage || $( "" ) } );
+
+		if( !touchOverflow){
+			toPage.height( screenHeight + toScroll );
+		}
+
+		toPage.data( "page" )._trigger( "beforeshow", null, { prevPage: fromPage || $( "" ) } );
 
 		//clear page loader
 		$.mobile.hidePageLoadingMsg();
+
+		if( touchOverflow && toScroll ){
+
+			toPage.addClass( "ui-mobile-pre-transition" );
+			// Send focus to page as it is now display: block
+			reFocus( toPage );
+
+			//set page's scrollTop to remembered distance
+			if( toPage.is( ".ui-native-fixed" ) ){
+				toPage.find( ".ui-content" ).scrollTop( toScroll );
+			}
+			else{
+				toPage.scrollTop( toScroll );
+			}
+		}
 
 		//find the transition handler for the specified transition. If there
 		//isn't one in our transitionHandlers dictionary, use the default one.
@@ -425,33 +533,35 @@
 			promise = th( transition, reverse, toPage, fromPage );
 
 		promise.done(function() {
-			//reset toPage height bac
-			toPage.height( "" );
-			
-			//jump to top or prev scroll, sometimes on iOS the page has not rendered yet.
-			if( toScroll ){
-				$.mobile.silentScroll( toScroll );
-				$( document ).one( "silentscroll", function() { reFocus( toPage ); } );
+			//reset toPage height back
+			if( !touchOverflow ){
+				toPage.height( "" );
 			}
-			else{
-				reFocus( toPage ); 
+
+			// Jump to top or prev scroll, sometimes on iOS the page has not rendered yet.
+			if( !touchOverflow ){
+				$.mobile.silentScroll( toScroll );
 			}
 
 			//trigger show/hide events
 			if( fromPage ) {
-				fromPage.height("").data( "page" )._trigger( "hide", null, { nextPage: toPage } );
+				if( !touchOverflow ){
+					fromPage.height( "" );
+				}
+
+				fromPage.data( "page" )._trigger( "hide", null, { nextPage: toPage } );
 			}
-			
+
 			//trigger pageshow, define prevPage as either fromPage or empty jQuery obj
 			toPage.data( "page" )._trigger( "show", null, { prevPage: fromPage || $( "" ) } );
 		});
 
 		return promise;
 	}
-	
+
 	//simply set the active page's minimum height to screen height, depending on orientation
 	function getScreenHeight(){
-		var orientation 	= jQuery.event.special.orientationchange.orientation(),
+		var orientation 	= $.event.special.orientationchange.orientation(),
 			port			= orientation === "portrait",
 			winMin			= port ? 480 : 320,
 			screenHeight	= port ? screen.availHeight : screen.availWidth,
@@ -460,9 +570,15 @@
 
 		return pageMin;
 	}
-	
+
+	$.mobile.getScreenHeight = getScreenHeight;
+
 	//simply set the active page's minimum height to screen height, depending on orientation
 	function resetActivePageHeight(){
+		// Don't apply this height in touch overflow enabled mode
+		if( $.support.touchOverflow && $.mobile.touchOverflowEnabled ){
+			return;
+		}
 		$( "." + $.mobile.activePageClass ).css( "min-height", getScreenHeight() );
 	}
 
@@ -492,22 +608,16 @@
 		}
 	};
 
-	//update location.hash, with or without triggering hashchange event
-	//TODO - deprecate this one at 1.0
-	$.mobile.updateHash = path.set;
-
 	//expose path object on $.mobile
 	$.mobile.path = path;
 
 	//expose base object on $.mobile
 	$.mobile.base = base;
 
-	//url stack, useful when plugins need to be aware of previous pages viewed
-	//TODO: deprecate this one at 1.0
-	$.mobile.urlstack = urlHistory.stack;
-
 	//history stack
 	$.mobile.urlHistory = urlHistory;
+
+	$.mobile.dialogHashKey = dialogHashKey;
 
 	//default non-animation transition handler
 	$.mobile.noneTransitionHandler = function( name, reverse, $toPage, $fromPage ) {
@@ -540,6 +650,26 @@
 		return asParsedObject ? $.extend( {}, documentBase ) : documentBase.href;
 	};
 
+	$.mobile._bindPageRemove = function() {
+		var page = $(this);
+
+		// when dom caching is not enabled or the page is embedded bind to remove the page on hide
+		if( !page.data("page").options.domCache
+				&& page.is(":jqmData(external-page='true')") ) {
+
+			page.bind( 'pagehide.remove', function() {
+				var $this = $( this ),
+					prEvent = new $.Event( "pageremove" );
+
+				$this.trigger( prEvent );
+
+				if( !prEvent.isDefaultPrevented() ){
+					$this.removeWithDependents();
+				}
+			});
+		}
+	};
+
 	// Load a page into the DOM.
 	$.mobile.loadPage = function( url, options ) {
 		// This function uses deferred notifications to let callers
@@ -559,9 +689,15 @@
 			// page is loaded off the network.
 			dupCachedPage = null,
 
+			// determine the current base url
+			findBaseWithDefault = function(){
+				var closestBase = ( $.mobile.activePage && getClosestBaseUrl( $.mobile.activePage ) );
+				return closestBase || documentBase.hrefNoHash;
+			},
+
 			// The absolute version of the URL passed into the function. This
 			// version of the URL may contain dialog/subpage params in it.
-			absUrl = path.makeUrlAbsolute( url, documentBase.hrefNoHash );
+			absUrl = path.makeUrlAbsolute( url, findBaseWithDefault() );
 
 
 		// If the caller provided data, and we're using "get" request,
@@ -569,6 +705,11 @@
 		if ( settings.data && settings.type === "get" ) {
 			absUrl = path.addSearchParams( absUrl, settings.data );
 			settings.data = undefined;
+		}
+
+		// If the caller is using a "post" request, reloadPage must be true
+		if(  settings.data && settings.type === "post" ){
+			settings.reloadPage = true;
 		}
 
 			// The absolute version of the URL minus any dialog/subpage params.
@@ -588,6 +729,37 @@
 		// Check to see if the page already exists in the DOM.
 		page = settings.pageContainer.children( ":jqmData(url='" + dataUrl + "')" );
 
+		// If we failed to find the page, check to see if the url is a
+		// reference to an embedded page. If so, it may have been dynamically
+		// injected by a developer, in which case it would be lacking a data-url
+		// attribute and in need of enhancement.
+		if ( page.length === 0 && dataUrl && !path.isPath( dataUrl ) ) {
+			page = settings.pageContainer.children( "#" + dataUrl )
+				.attr( "data-" + $.mobile.ns + "url", dataUrl );
+		}
+
+		// If we failed to find a page in the DOM, check the URL to see if it
+		// refers to the first page in the application. If it isn't a reference
+		// to the first page and refers to non-existent embedded page, error out.
+		if ( page.length === 0 ) {
+			if ( $.mobile.firstPage && path.isFirstPageUrl( fileUrl ) ) {
+				// Check to make sure our cached-first-page is actually
+				// in the DOM. Some user deployed apps are pruning the first
+				// page from the DOM for various reasons, we check for this
+				// case here because we don't want a first-page with an id
+				// falling through to the non-existent embedded page error
+				// case. If the first-page is not in the DOM, then we let
+				// things fall through to the ajax loading code below so
+				// that it gets reloaded.
+				if ( $.mobile.firstPage.parent().length ) {
+					page = $( $.mobile.firstPage );
+				}
+			} else if ( path.isEmbeddedPage( fileUrl )  ) {
+				deferred.reject( absUrl, options );
+				return deferred.promise();
+			}
+		}
+
 		// Reset base to the default document base.
 		if ( base ) {
 			base.reset();
@@ -606,113 +778,188 @@
 			dupCachedPage = page;
 		}
 
-		if ( settings.showLoadMsg ) {
-			$.mobile.showPageLoadingMsg();
+		var mpc = settings.pageContainer,
+			pblEvent = new $.Event( "pagebeforeload" ),
+			triggerData = { url: url, absUrl: absUrl, dataUrl: dataUrl, deferred: deferred, options: settings };
+
+		// Let listeners know we're about to load a page.
+		mpc.trigger( pblEvent, triggerData );
+
+		// If the default behavior is prevented, stop here!
+		if( pblEvent.isDefaultPrevented() ){
+			return deferred.promise();
 		}
 
-		// Load the new page.
-		$.ajax({
-			url: fileUrl,
-			type: settings.type,
-			data: settings.data,
-			dataType: "html",
-			success: function( html ) {
-				//pre-parse html to check for a data-url,
-				//use it as the new fileUrl, base path, etc
-				var all = $( "<div></div>" ),
+		if ( settings.showLoadMsg ) {
+
+			// This configurable timeout allows cached pages a brief delay to load without showing a message
+			var loadMsgDelay = setTimeout(function(){
+					$.mobile.showPageLoadingMsg();
+				}, settings.loadMsgDelay ),
+
+				// Shared logic for clearing timeout and removing message.
+				hideMsg = function(){
+
+					// Stop message show timer
+					clearTimeout( loadMsgDelay );
+
+					// Hide loading message
+					$.mobile.hidePageLoadingMsg();
+				};
+		}
+
+		if ( !( $.mobile.allowCrossDomainPages || path.isSameDomain( documentUrl, absUrl ) ) ) {
+			deferred.reject( absUrl, options );
+		} else {
+			// Load the new page.
+			$.ajax({
+				url: fileUrl,
+				type: settings.type,
+				data: settings.data,
+				dataType: "html",
+				success: function( html, textStatus, xhr ) {
+					//pre-parse html to check for a data-url,
+					//use it as the new fileUrl, base path, etc
+					var all = $( "<div></div>" ),
 
 						//page title regexp
 						newPageTitle = html.match( /<title[^>]*>([^<]*)/ ) && RegExp.$1,
 
 						// TODO handle dialogs again
-						pageElemRegex = new RegExp( ".*(<[^>]+\\bdata-" + $.mobile.ns + "role=[\"']?page[\"']?[^>]*>).*" ),
+						pageElemRegex = new RegExp( "(<[^>]+\\bdata-" + $.mobile.ns + "role=[\"']?page[\"']?[^>]*>)" ),
 						dataUrlRegex = new RegExp( "\\bdata-" + $.mobile.ns + "url=[\"']?([^\"'>]*)[\"']?" );
 
 
-				// data-url must be provided for the base tag so resource requests can be directed to the
-				// correct url. loading into a temprorary element makes these requests immediately
-				if( pageElemRegex.test( html )
-						&& RegExp.$1
-						&& dataUrlRegex.test( RegExp.$1 )
-						&& RegExp.$1 ) {
-					url = fileUrl = path.getFilePath( RegExp.$1 );
-				}
+					// data-url must be provided for the base tag so resource requests can be directed to the
+					// correct url. loading into a temprorary element makes these requests immediately
+					if( pageElemRegex.test( html )
+							&& RegExp.$1
+							&& dataUrlRegex.test( RegExp.$1 )
+							&& RegExp.$1 ) {
+						url = fileUrl = path.getFilePath( RegExp.$1 );
+					}
 
-				if ( base ) {
-					base.set( fileUrl );
-				}
+					if ( base ) {
+						base.set( fileUrl );
+					}
 
-				//workaround to allow scripts to execute when included in page divs
-				all.get( 0 ).innerHTML = html;
-				page = all.find( ":jqmData(role='page'), :jqmData(role='dialog')" ).first();
+					//workaround to allow scripts to execute when included in page divs
+					all.get( 0 ).innerHTML = html;
+					page = all.find( ":jqmData(role='page'), :jqmData(role='dialog')" ).first();
 
-				if ( newPageTitle && !page.jqmData( "title" ) ) {
-					page.jqmData( "title", newPageTitle );
-				}
+					//if page elem couldn't be found, create one and insert the body element's contents
+					if( !page.length ){
+						page = $( "<div data-" + $.mobile.ns + "role='page'>" + html.split( /<\/?body[^>]*>/gmi )[1] + "</div>" );
+					}
 
-				//rewrite src and href attrs to use a base url
-				if( !$.support.dynamicBaseTag ) {
-					var newPath = path.get( fileUrl );
-					page.find( "[src], link[href], a[rel='external'], :jqmData(ajax='false'), a[target]" ).each(function() {
-						var thisAttr = $( this ).is( '[href]' ) ? 'href' :
-								$(this).is('[src]') ? 'src' : 'action',
-							thisUrl = $( this ).attr( thisAttr );
-
-						// XXX_jblas: We need to fix this so that it removes the document
-						//            base URL, and then prepends with the new page URL.
-						//if full path exists and is same, chop it - helps IE out
-						thisUrl = thisUrl.replace( location.protocol + '//' + location.host + location.pathname, '' );
-
-						if( !/^(\w+:|#|\/)/.test( thisUrl ) ) {
-							$( this ).attr( thisAttr, newPath + thisUrl );
+					if ( newPageTitle && !page.jqmData( "title" ) ) {
+						if ( ~newPageTitle.indexOf( "&" ) ) {
+							newPageTitle = $( "<div>" + newPageTitle + "</div>" ).text();
 						}
-					});
-				}
+						page.jqmData( "title", newPageTitle );
+					}
 
-				//append to page and enhance
-				page
-					.attr( "data-" + $.mobile.ns + "url", path.convertUrlToDataUrl( fileUrl ) )
-					.appendTo( settings.pageContainer );
+					//rewrite src and href attrs to use a base url
+					if( !$.support.dynamicBaseTag ) {
+						var newPath = path.get( fileUrl );
+						page.find( "[src], link[href], a[rel='external'], :jqmData(ajax='false'), a[target]" ).each(function() {
+							var thisAttr = $( this ).is( '[href]' ) ? 'href' :
+									$(this).is('[src]') ? 'src' : 'action',
+								thisUrl = $( this ).attr( thisAttr );
 
-				enhancePage( page, settings.role );
+							// XXX_jblas: We need to fix this so that it removes the document
+							//            base URL, and then prepends with the new page URL.
+							//if full path exists and is same, chop it - helps IE out
+							thisUrl = thisUrl.replace( location.protocol + '//' + location.host + location.pathname, '' );
 
-				// Enhancing the page may result in new dialogs/sub pages being inserted
-				// into the DOM. If the original absUrl refers to a sub-page, that is the
-				// real page we are interested in.
-				if ( absUrl.indexOf( "&" + $.mobile.subPageUrlKey ) > -1 ) {
-					page = settings.pageContainer.children( ":jqmData(url='" + dataUrl + "')" );
-				}
-
-				// Remove loading message.
-				if ( settings.showLoadMsg ) {
-					$.mobile.hidePageLoadingMsg();
-				}
-
-				deferred.resolve( absUrl, options, page, dupCachedPage );
-			},
-			error: function() {
-				//set base back to current path
-				if( base ) {
-					base.set( path.get() );
-				}
-
-				// Remove loading message.
-				if ( settings.showLoadMsg ) {
-					$.mobile.hidePageLoadingMsg();
-
-					//show error message
-					$( "<div class='ui-loader ui-overlay-shadow ui-body-e ui-corner-all'><h1>"+ $.mobile.pageLoadErrorMessage +"</h1></div>" )
-						.css({ "display": "block", "opacity": 0.96, "top": $window.scrollTop() + 100 })
-						.appendTo( settings.pageContainer )
-						.delay( 800 )
-						.fadeOut( 400, function() {
-							$( this ).remove();
+							if( !/^(\w+:|#|\/)/.test( thisUrl ) ) {
+								$( this ).attr( thisAttr, newPath + thisUrl );
+							}
 						});
-				}
+					}
 
-				deferred.reject( absUrl, options );
-			}
-		});
+					//append to page and enhance
+					// TODO taging a page with external to make sure that embedded pages aren't removed
+					//      by the various page handling code is bad. Having page handling code in many
+					//      places is bad. Solutions post 1.0
+					page
+						.attr( "data-" + $.mobile.ns + "url", path.convertUrlToDataUrl( fileUrl ) )
+						.attr( "data-" + $.mobile.ns + "external-page", true )
+						.appendTo( settings.pageContainer );
+
+					// wait for page creation to leverage options defined on widget
+					page.one( 'pagecreate', $.mobile._bindPageRemove );
+
+					enhancePage( page, settings.role );
+
+					// Enhancing the page may result in new dialogs/sub pages being inserted
+					// into the DOM. If the original absUrl refers to a sub-page, that is the
+					// real page we are interested in.
+					if ( absUrl.indexOf( "&" + $.mobile.subPageUrlKey ) > -1 ) {
+						page = settings.pageContainer.children( ":jqmData(url='" + dataUrl + "')" );
+					}
+
+					//bind pageHide to removePage after it's hidden, if the page options specify to do so
+
+					// Remove loading message.
+					if ( settings.showLoadMsg ) {
+						hideMsg();
+					}
+
+					// Add the page reference and xhr to our triggerData.
+					triggerData.xhr = xhr;
+					triggerData.textStatus = textStatus;
+					triggerData.page = page;
+
+					// Let listeners know the page loaded successfully.
+					settings.pageContainer.trigger( "pageload", triggerData );
+
+					deferred.resolve( absUrl, options, page, dupCachedPage );
+				},
+				error: function( xhr, textStatus, errorThrown ) {
+					//set base back to current path
+					if( base ) {
+						base.set( path.get() );
+					}
+
+					// Add error info to our triggerData.
+					triggerData.xhr = xhr;
+					triggerData.textStatus = textStatus;
+					triggerData.errorThrown = errorThrown;
+
+					var plfEvent = new $.Event( "pageloadfailed" );
+
+					// Let listeners know the page load failed.
+					settings.pageContainer.trigger( plfEvent, triggerData );
+
+					// If the default behavior is prevented, stop here!
+					// Note that it is the responsibility of the listener/handler
+					// that called preventDefault(), to resolve/reject the
+					// deferred object within the triggerData.
+					if( plfEvent.isDefaultPrevented() ){
+						return;
+					}
+
+					// Remove loading message.
+					if ( settings.showLoadMsg ) {
+
+						// Remove loading message.
+						hideMsg();
+
+						//show error message
+						$( "<div class='ui-loader ui-overlay-shadow ui-body-e ui-corner-all'><h1>"+ $.mobile.pageLoadErrorMessage +"</h1></div>" )
+							.css({ "display": "block", "opacity": 0.96, "top": $window.scrollTop() + 100 })
+							.appendTo( settings.pageContainer )
+							.delay( 800 )
+							.fadeOut( 400, function() {
+								$( this ).remove();
+							});
+					}
+
+					deferred.reject( absUrl, options );
+				}
+			});
+		}
 
 		return deferred.promise();
 	};
@@ -722,49 +969,13 @@
 		data: undefined,
 		reloadPage: false,
 		role: undefined, // By default we rely on the role defined by the @data-role attribute.
-		showLoadMsg: true,
-		pageContainer: undefined
+		showLoadMsg: false,
+		pageContainer: undefined,
+		loadMsgDelay: 50 // This delay allows loads that pull from browser cache to occur without showing the loading message.
 	};
 
 	// Show a specific page in the page container.
 	$.mobile.changePage = function( toPage, options ) {
-		// XXX: REMOVE_BEFORE_SHIPPING_1.0
-		// This is temporary code that makes changePage() compatible with previous alpha versions.
-		if ( typeof options !== "object" ) {
-			var opts = null;
-
-			// Map old-style call signature for form submit to the new options object format.
-			if ( typeof toPage === "object" && toPage.url && toPage.type ) {
-				opts = {
-					type: toPage.type,
-					data: toPage.data,
-					forcePageLoad: true
-				};
-				toPage = toPage.url;
-			}
-
-			// The arguments passed into the function need to be re-mapped
-			// to the new options object format.
-			var len = arguments.length;
-			if ( len > 1 ) {
-				var argNames = [ "transition", "reverse", "changeHash", "fromHashChange" ], i;
-				for ( i = 1; i < len; i++ ) {
-					var a = arguments[ i ];
-					if ( typeof a !== "undefined" ) {
-						opts = opts || {};
-						opts[ argNames[ i - 1 ] ] = a;
-					}
-				}
-			}
-
-			// If an options object was created, then we know changePage() was called
-			// with an old signature.
-			if ( opts ) {
-				return $.mobile.changePage( toPage, opts );
-			}
-		}
-		// XXX: REMOVE_BEFORE_SHIPPING_1.0
-
 		// If we are in the midst of a transition, queue the current request.
 		// We'll call changePage() once we're done with the current transition to
 		// service the request.
@@ -773,16 +984,36 @@
 			return;
 		}
 
+		var settings = $.extend( {}, $.mobile.changePage.defaults, options );
+
+		// Make sure we have a pageContainer to work with.
+		settings.pageContainer = settings.pageContainer || $.mobile.pageContainer;
+
+		// Make sure we have a fromPage.
+		settings.fromPage = settings.fromPage || $.mobile.activePage;
+
+		var mpc = settings.pageContainer,
+			pbcEvent = new $.Event( "pagebeforechange" ),
+			triggerData = { toPage: toPage, options: settings };
+
+		// Let listeners know we're about to change the current page.
+		mpc.trigger( pbcEvent, triggerData );
+
+		// If the default behavior is prevented, stop here!
+		if( pbcEvent.isDefaultPrevented() ){
+			return;
+		}
+
+		// We allow "pagebeforechange" observers to modify the toPage in the trigger
+		// data to allow for redirects. Make sure our toPage is updated.
+
+		toPage = triggerData.toPage;
+
 		// Set the isPageTransitioning flag to prevent any requests from
 		// entering this method while we are in the midst of loading a page
 		// or transitioning.
 
 		isPageTransitioning = true;
-
-		var settings = $.extend( {}, $.mobile.changePage.defaults, options );
-
-		// Make sure we have a pageContainer to work with.
-		settings.pageContainer = settings.pageContainer || $.mobile.pageContainer;
 
 		// If the caller passed us a url, call loadPage()
 		// to make sure it is loaded into the DOM. We'll listen
@@ -796,7 +1027,6 @@
 					$.mobile.changePage( newPage, options );
 				})
 				.fail(function( url, options ) {
-					// XXX_jblas: Fire off changepagefailed notificaiton.
 					isPageTransitioning = false;
 
 					//clear out the active button state
@@ -804,16 +1034,25 @@
 
 					//release transition lock so navigation is free again
 					releasePageTransitionLock();
-					settings.pageContainer.trigger("changepagefailed");
+					settings.pageContainer.trigger( "pagechangefailed", triggerData );
 				});
 			return;
 		}
 
+		// If we are going to the first-page of the application, we need to make
+		// sure settings.dataUrl is set to the application document url. This allows
+		// us to avoid generating a document url with an id hash in the case where the
+		// first-page of the document has an id attribute specified.
+		if ( toPage[ 0 ] === $.mobile.firstPage[ 0 ] && !settings.dataUrl ) {
+			settings.dataUrl = documentUrl.hrefNoHash;
+		}
+
 		// The caller passed us a real page DOM element. Update our
 		// internal state and then trigger a transition to the page.
-		var mpc = settings.pageContainer,
-			fromPage = $.mobile.activePage,
-			url = toPage.jqmData( "url" ),
+		var fromPage = settings.fromPage,
+			url = ( settings.dataUrl && path.convertUrlToDataUrl( settings.dataUrl ) ) || toPage.jqmData( "url" ),
+			// The pageUrl var is usually the same as url, except when url is obscured as a dialog url. pageUrl always contains the file path
+			pageUrl = url,
 			fileUrl = path.getFilePath( url ),
 			active = urlHistory.getActive(),
 			activeIsInitialPage = urlHistory.activeIndex === 0,
@@ -821,18 +1060,19 @@
 			pageTitle = document.title,
 			isDialog = settings.role === "dialog" || toPage.jqmData( "role" ) === "dialog";
 
-		// Let listeners know we're about to change the current page.
-		mpc.trigger( "beforechangepage" );
-
-		// If we are trying to transition to the same page that we are currently on ignore the request.
-		// an illegal same page request is defined by the current page being the same as the url, as long as there's history
-		// and toPage is not an array or object (those are allowed to be "same")
-		//
-		// XXX_jblas: We need to remove this at some point when we allow for transitions
-		//            to the same page.
-		if( fromPage && fromPage[0] === toPage[0] ) {
+		// By default, we prevent changePage requests when the fromPage and toPage
+		// are the same element, but folks that generate content manually/dynamically
+		// and reuse pages want to be able to transition to the same page. To allow
+		// this, they will need to change the default value of allowSamePageTransition
+		// to true, *OR*, pass it in as an option when they manually call changePage().
+		// It should be noted that our default transition animations assume that the
+		// formPage and toPage are different elements, so they may behave unexpectedly.
+		// It is up to the developer that turns on the allowSamePageTransitiona option
+		// to either turn off transition animations, or make sure that an appropriate
+		// animation transition is used.
+		if( fromPage && fromPage[0] === toPage[0] && !settings.allowSamePageTransition ) {
 			isPageTransitioning = false;
-			mpc.trigger( "changepage" );
+			mpc.trigger( "pagechange", triggerData );
 			return;
 		}
 
@@ -852,15 +1092,27 @@
 
 		// Kill the keyboard.
 		// XXX_jblas: We need to stop crawling the entire document to kill focus. Instead,
-		//            we should be tracking focus with a live() handler so we already have
+		//            we should be tracking focus with a delegate() handler so we already have
 		//            the element in hand at this point.
-		$( document.activeElement || "" ).add( "input:focus, textarea:focus, select:focus" ).blur();
+		// Wrap this in a try/catch block since IE9 throw "Unspecified error" if document.activeElement
+		// is undefined when we are in an IFrame.
+		try {
+			if(document.activeElement && document.activeElement.nodeName.toLowerCase() != 'body') {
+				$(document.activeElement).blur();
+			} else {
+				$( "input:focus, textarea:focus, select:focus" ).blur();
+			}
+		} catch(e) {}
 
 		// If we're displaying the page as a dialog, we don't want the url
 		// for the dialog content to be used in the hash. Instead, we want
 		// to append the dialogHashKey to the url of the current page.
 		if ( isDialog && active ) {
-			url = active.url + dialogHashKey;
+			// on the initial page load active.url is undefined and in that case should
+			// be an empty string. Moving the undefined -> empty string back into
+			// urlHistory.addNew seemed imprudent given undefined better represents
+			// the url state
+			url = ( active.url || "" ) + dialogHashKey;
 		}
 
 		// Set the location hash.
@@ -871,15 +1123,24 @@
 			path.set( url );
 		}
 
-		//if title element wasn't found, try the page div data attr too
-		var newPageTitle = toPage.jqmData( "title" ) || toPage.children(":jqmData(role='header')").find(".ui-title" ).text();
+		// if title element wasn't found, try the page div data attr too
+		// If this is a deep-link or a reload ( active === undefined ) then just use pageTitle
+		var newPageTitle = ( !active )? pageTitle : toPage.jqmData( "title" ) || toPage.children(":jqmData(role='header')").find(".ui-title" ).getEncodedText();
 		if( !!newPageTitle && pageTitle == document.title ) {
 			pageTitle = newPageTitle;
 		}
+		if ( !toPage.jqmData( "title" ) ) {
+			toPage.jqmData( "title", pageTitle );
+		}
+
+		// Make sure we have a transition defined.
+		settings.transition = settings.transition
+			|| ( ( historyDir && !activeIsInitialPage ) ? active.transition : undefined )
+			|| ( isDialog ? $.mobile.defaultDialogTransition : $.mobile.defaultPageTransition );
 
 		//add page to history stack if it's not back or forward
 		if( !historyDir ) {
-			urlHistory.addNew( url, settings.transition, pageTitle, toPage );
+			urlHistory.addNew( url, settings.transition, pageTitle, pageUrl, settings.role );
 		}
 
 		//set page title
@@ -888,30 +1149,31 @@
 		//set "toPage" as activePage
 		$.mobile.activePage = toPage;
 
-		// Make sure we have a transition defined.
-		settings.transition = settings.transition
-			|| ( ( historyDir && !activeIsInitialPage ) ? active.transition : undefined )
-			|| ( settings.role === "dialog" ? $.mobile.defaultDialogTransition : $.mobile.defaultPageTransition );
-
 		// If we're navigating back in the URL history, set reverse accordingly.
 		settings.reverse = settings.reverse || historyDir < 0;
 
 		transitionPages( toPage, fromPage, settings.transition, settings.reverse )
 			.done(function() {
 				removeActiveLinkClass();
-	
+
 				//if there's a duplicateCachedPage, remove it from the DOM now that it's hidden
 				if ( settings.duplicateCachedPage ) {
 					settings.duplicateCachedPage.remove();
 				}
-	
+
 				//remove initial build class (only present on first pageshow)
 				$html.removeClass( "ui-mobile-rendering" );
-	
+
+				// Send focus to the newly shown page. Moved from promise .done binding in transitionPages
+				// itself to avoid ie bug that reports offsetWidth as > 0 (core check for visibility)
+				// despite visibility: hidden addresses issue #2965
+				// https://github.com/jquery/jquery-mobile/issues/2965
+				reFocus( toPage );
+
 				releasePageTransitionLock();
-	
+
 				// Let listeners know we're all done changing the current page.
-				mpc.trigger( "changepage" );
+				mpc.trigger( "pagechange", triggerData );
 			});
 	};
 
@@ -922,45 +1184,25 @@
 		fromHashChange: false,
 		role: undefined, // By default we rely on the role defined by the @data-role attribute.
 		duplicateCachedPage: undefined,
-		pageContainer: undefined
+		pageContainer: undefined,
+		showLoadMsg: true, //loading message shows by default when pages are being fetched during changePage
+		dataUrl: undefined,
+		fromPage: undefined,
+		allowSamePageTransition: false
 	};
 
 /* Event Bindings - hashchange, submit, and click */
-
-	//bind to form submit events, handle with Ajax
-	$( "form" ).live('submit', function( event ) {
-		var $this = $( this );
-		if( !$.mobile.ajaxEnabled ||
-			$this.is( ":jqmData(ajax='false')" ) ) {
-				return;
-			}
-
-		var type = $this.attr( "method" ),
-			url = path.makeUrlAbsolute( $this.attr( "action" ), getClosestBaseUrl($this) ),
-			target = $this.attr( "target" );
-
-		//external submits use regular HTTP
-		if( path.isExternal( url ) || target ) {
-			return;
-		}
-
-		$.mobile.changePage(
-			url,
-			{
-				type:		type.length && type.toLowerCase() || "get",
-				data:		$this.serialize(),
-				transition:	$this.jqmData( "transition" ),
-				direction:	$this.jqmData( "direction" ),
-				reloadPage:	true
-			}
-		);
-		event.preventDefault();
-	});
-
 	function findClosestLink( ele )
 	{
 		while ( ele ) {
-			if ( ele.nodeName.toLowerCase() == "a" ) {
+			// Look for the closest element with a nodeName of "a".
+			// Note that we are checking if we have a valid nodeName
+			// before attempting to access it. This is because the
+			// node we get called with could have originated from within
+			// an embedded SVG document where some symbol instance elements
+			// don't have nodeName defined on them, or strings are of type
+			// SVGAnimatedString.
+			if ( ( typeof ele.nodeName === "string" ) && ele.nodeName.toLowerCase() == "a" ) {
 				break;
 			}
 			ele = ele.parentNode;
@@ -981,27 +1223,91 @@
 
 		return path.makeUrlAbsolute( url, base);
 	}
-	
-	
+
+
 	//The following event bindings should be bound after mobileinit has been triggered
 	//the following function is called in the init file
 	$.mobile._registerInternalEvents = function(){
 
+		//bind to form submit events, handle with Ajax
+		$( document ).delegate( "form", "submit", function( event ) {
+			var $this = $( this );
+			if( !$.mobile.ajaxEnabled ||
+				$this.is( ":jqmData(ajax='false')" ) ) {
+					return;
+				}
+
+			var type = $this.attr( "method" ),
+				target = $this.attr( "target" ),
+				url = $this.attr( "action" );
+
+			// If no action is specified, browsers default to using the
+			// URL of the document containing the form. Since we dynamically
+			// pull in pages from external documents, the form should submit
+			// to the URL for the source document of the page containing
+			// the form.
+			if ( !url ) {
+				// Get the @data-url for the page containing the form.
+				url = getClosestBaseUrl( $this );
+				if ( url === documentBase.hrefNoHash ) {
+					// The url we got back matches the document base,
+					// which means the page must be an internal/embedded page,
+					// so default to using the actual document url as a browser
+					// would.
+					url = documentUrl.hrefNoSearch;
+				}
+			}
+
+			url = path.makeUrlAbsolute(  url, getClosestBaseUrl($this) );
+
+			//external submits use regular HTTP
+			if( path.isExternal( url ) || target ) {
+				return;
+			}
+
+			$.mobile.changePage(
+				url,
+				{
+					type:		type && type.length && type.toLowerCase() || "get",
+					data:		$this.serialize(),
+					transition:	$this.jqmData( "transition" ),
+					direction:	$this.jqmData( "direction" ),
+					reloadPage:	true
+				}
+			);
+			event.preventDefault();
+		});
+
 		//add active state on vclick
 		$( document ).bind( "vclick", function( event ) {
+			// if this isn't a left click we don't care. Its important to note
+			// that when the virtual event is generated it will create
+			if ( event.which > 1 || !$.mobile.linkBindingEnabled ){
+				return;
+			}
+
 			var link = findClosestLink( event.target );
 			if ( link ) {
 				if ( path.parseUrl( link.getAttribute( "href" ) || "#" ).hash !== "#" ) {
-					$( link ).closest( ".ui-btn" ).not( ".ui-disabled" ).addClass( $.mobile.activeBtnClass );
+					removeActiveLinkClass( true );
+					$activeClickedLink = $( link ).closest( ".ui-btn" ).not( ".ui-disabled" );
+					$activeClickedLink.addClass( $.mobile.activeBtnClass );
 					$( "." + $.mobile.activePageClass + " .ui-btn" ).not( link ).blur();
 				}
 			}
 		});
 
 		// click routing - direct to HTTP or Ajax, accordingly
-		$( document ).bind( $.mobile.useFastClick ? "vclick" : "click", function( event ) {
+		$( document ).bind( "click", function( event ) {
+			if( !$.mobile.linkBindingEnabled ){
+				return;
+			}
+
 			var link = findClosestLink( event.target );
-			if ( !link ) {
+
+			// If there is no link associated with the click or its not a left
+			// click we want to ignore the click
+			if ( !link || event.which > 1) {
 				return;
 			}
 
@@ -1016,18 +1322,18 @@
 				window.history.back();
 				return false;
 			}
-		
-			//if ajax is disabled, exit early
-			if( !$.mobile.ajaxEnabled ){
-				httpCleanup();
-				//use default click handling
-				return;
-			}
-		
+
 			var baseUrl = getClosestBaseUrl( $link ),
 
 				//get href, if defined, otherwise default to empty hash
 				href = path.makeUrlAbsolute( $link.attr( "href" ) || "#", baseUrl );
+
+			//if ajax is disabled, exit early
+			if( !$.mobile.ajaxEnabled && !path.isEmbeddedPage( href ) ){
+				httpCleanup();
+				//use default click handling
+				return;
+			}
 
 			// XXX_jblas: Ideally links to application pages should be specified as
 			//            an url to the application document with a hash that is either
@@ -1070,8 +1376,6 @@
 				//     moved into more comprehensive isExternalLink
 				isExternal = useDefaultUrlHandling || ( path.isExternal( href ) && !isCrossDomainPageLoad );
 
-			$activeClickedLink = $link.closest( ".ui-btn" );
-
 			if( isExternal ) {
 				httpCleanup();
 				//use default click handling
@@ -1092,12 +1396,34 @@
 			event.preventDefault();
 		});
 
-		//hashchange event handler
-		$window.bind( "hashchange", function( e, triggered ) {
+		//prefetch pages when anchors with data-prefetch are encountered
+		$( document ).delegate( ".ui-page", "pageshow.prefetch", function() {
+			var urls = [];
+			$( this ).find( "a:jqmData(prefetch)" ).each(function(){
+				var $link = $(this),
+					url = $link.attr( "href" );
+
+				if ( url && $.inArray( url, urls ) === -1 ) {
+					urls.push( url );
+
+					$.mobile.loadPage( url, {role: $link.attr("data-" + $.mobile.ns + "rel")} );
+				}
+			});
+		});
+
+		$.mobile._handleHashChange = function( hash ) {
 			//find first page via hash
-			var to = path.stripHash( location.hash ),
+			var to = path.stripHash( hash ),
 				//transition is false if it's the first page, undefined otherwise (and may be overridden by default)
-				transition = $.mobile.urlHistory.stack.length === 0 ? "none" : undefined;
+				transition = $.mobile.urlHistory.stack.length === 0 ? "none" : undefined,
+
+				// default options for the changPage calls made after examining the current state
+				// of the page and the hash
+				changePageOptions = {
+					transition: transition,
+					changeHash: false,
+					fromHashChange: true
+				};
 
 			//if listening is disabled (either globally or temporarily), or it's a dialog hash
 			if( !$.mobile.hashListeningEnabled || urlHistory.ignoreNextHashChange ) {
@@ -1106,8 +1432,7 @@
 			}
 
 			// special case for dialogs
-			if( urlHistory.stack.length > 1 &&
-					to.indexOf( dialogHashKey ) > -1 ) {
+			if( urlHistory.stack.length > 1 && to.indexOf( dialogHashKey ) > -1 ) {
 
 				// If current active page is not a dialog skip the dialog and continue
 				// in the same direction
@@ -1120,31 +1445,57 @@
 						isForward: function() { window.history.forward(); }
 					});
 
-					// prevent changepage
+					// prevent changePage()
 					return;
 				} else {
-					var setTo = function() { to = $.mobile.urlHistory.getActive().page; };
 					// if the current active page is a dialog and we're navigating
 					// to a dialog use the dialog objected saved in the stack
-					urlHistory.directHashChange({	currentUrl: to, isBack: setTo, isForward: setTo	});
+					urlHistory.directHashChange({
+						currentUrl: to,
+
+						// regardless of the direction of the history change
+						// do the following
+						either: function( isBack ) {
+							var active = $.mobile.urlHistory.getActive();
+
+							to = active.pageUrl;
+
+							// make sure to set the role, transition and reversal
+							// as most of this is lost by the domCache cleaning
+							$.extend( changePageOptions, {
+								role: active.role,
+								transition:	 active.transition,
+								reverse: isBack
+							});
+						}
+					});
 				}
 			}
 
 			//if to is defined, load it
 			if ( to ) {
-				to = ( typeof to === "string" && !path.isPath( to ) ) ? ( '#' + to ) : to;
-				$.mobile.changePage( to, { transition: transition, changeHash: false, fromHashChange: true } );
+				// At this point, 'to' can be one of 3 things, a cached page element from
+				// a history stack entry, an id, or site-relative/absolute URL. If 'to' is
+				// an id, we need to resolve it against the documentBase, not the location.href,
+				// since the hashchange could've been the result of a forward/backward navigation
+				// that crosses from an external page/dialog to an internal page/dialog.
+				to = ( typeof to === "string" && !path.isPath( to ) ) ? ( path.makeUrlAbsolute( '#' + to, documentBase ) ) : to;
+				$.mobile.changePage( to, changePageOptions );
+			}	else {
+				//there's no hash, go to the first page in the dom
+				$.mobile.changePage( $.mobile.firstPage, changePageOptions );
 			}
-			//there's no hash, go to the first page in the dom
-			else {
-				$.mobile.changePage( $.mobile.firstPage, { transition: transition, changeHash: false, fromHashChange: true } );
-			}
+		};
+
+		//hashchange event handler
+		$window.bind( "hashchange", function( e, triggered ) {
+			$.mobile._handleHashChange( location.hash );
 		});
-		
+
 		//set page min-heights to be device specific
 		$( document ).bind( "pageshow", resetActivePageHeight );
 		$( window ).bind( "throttledresize", resetActivePageHeight );
-	
-	};//_registerInternalEvents callback	
+
+	};//_registerInternalEvents callback
 
 })( jQuery );
