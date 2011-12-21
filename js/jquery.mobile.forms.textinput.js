@@ -16,11 +16,12 @@ $.widget( "mobile.textinput", $.mobile.widget, {
 			o = this.options,
 			theme = o.theme || $.mobile.getInheritedTheme( this.element, "c" ),
 			themeclass  = " ui-body-" + theme,
+			boxSizing = Modernizr.testAllProps('boxSizing'),
 			focusedEl, clearbtn;
 
 		$( "label[for='" + input.attr( "id" ) + "']" ).addClass( "ui-input-text" );
 
-		focusedEl = input.addClass("ui-input-text ui-body-"+ theme );
+		focusedEl = input.addClass("ui-input-text ui-body-" + theme + (boxSizing ? " ui-input-border-box-fix" : ""));
 
 		// XXX: Temporary workaround for issue 785 (Apple bug 8910589).
 		//      Turn off autocorrect and autocomplete on non-iOS 5 devices
@@ -41,6 +42,10 @@ $.widget( "mobile.textinput", $.mobile.widget, {
 		if ( input.is( "[type='search'],:jqmData(type='search')" ) ) {
 
 			focusedEl = input.wrap( "<div class='ui-input-search ui-shadow-inset ui-btn-corner-all ui-btn-shadow ui-icon-searchfield" + themeclass + "'></div>" ).parent();
+			if(boxSizing) {				
+				focusedEl.addClass('ui-input-border-box-fix');
+				console.log(focusedEl);
+			}
 			clearbtn = $( "<a href='#' class='ui-input-clear' title='clear text'>clear text</a>" )
 				.tap(function( event ) {
 					input.val( "" ).focus();

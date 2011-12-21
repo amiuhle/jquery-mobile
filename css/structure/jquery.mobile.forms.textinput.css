@@ -8,6 +8,8 @@ textarea.ui-input-text { height: 50px; -webkit-transition: height 200ms linear; 
 .ui-input-search .ui-input-clear { position: absolute; right: 0; top: 50%; margin-top: -13px; }
 .ui-input-search .ui-input-clear-hidden { display: none; }
 
+div.ui-input-border-box-fix, input.ui-input-border-box-fix, textarea.ui-input-border-box-fix { box-sizing: border-box; -webkit-box-sizing: border-box; -moz-box-sizing: border-box; width: 100%; }
+
 /* orientation adjustments - incomplete!*/
 @media all and (min-width: 450px){
 	.ui-field-contain label.ui-input-text  { vertical-align: top; display: inline-block;  width: 20%;  margin: 0 2% 0 0 }
@@ -19,4 +21,5 @@ textarea.ui-input-text { height: 50px; -webkit-transition: height 200ms linear; 
 	.ui-hide-label textarea.ui-input-text, 
 	.ui-hide-label .ui-input-search { padding: .4em; width: 97%; } 
 	.ui-input-search input.ui-input-text { width: 98%; /*echos rule from above*/ }
+	.ui-field-contain div.ui-input-border-box-fix { width: 60%; } /*echoes rule from above*/
 }

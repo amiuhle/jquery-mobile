@@ -2,6 +2,7 @@
 $type = 'text/javascript';
 $files = array(
 	'../LICENSE-INFO.txt',
+	'modernizr.custom.js',
 	'jquery.ui.widget.js',
 	'jquery.mobile.widget.js',
 	'jquery.mobile.media.js',

@@ -1,5 +1,6 @@
 # The files to include when compiling the JS files
-JSFILES = 	  js/jquery.ui.widget.js \
+JSFILES = 	  js/modernizr.custom.js \
+			  js/jquery.ui.widget.js \
 			  js/jquery.mobile.widget.js \
 			  js/jquery.mobile.media.js \
 			  js/jquery.mobile.support.js \
