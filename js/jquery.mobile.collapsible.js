@@ -59,9 +59,16 @@ $.widget( "mobile.collapsible", $.mobile.widget, {
 					iconPos: "left",
 					icon: "plus",
 					theme: o.theme
-				})
-			.add( ".ui-btn-inner" )
-				.addClass( "ui-corner-top ui-corner-bottom" );
+				} )
+				.find( ".ui-icon" )
+					.removeAttr( "class" )
+					.buttonMarkup( {
+						shadow: true,
+						corners: true,
+						iconPos: "notext",
+						icon: "plus",
+						theme: o.iconTheme
+					} );
 
 		//events
 		collapsible
@@ -86,7 +93,18 @@ $.widget( "mobile.collapsible", $.mobile.widget, {
 					$this.toggleClass( "ui-collapsible-collapsed", isCollapse );
 					collapsibleContent.toggleClass( "ui-collapsible-content-collapsed", isCollapse ).attr( "aria-hidden", isCollapse );
 
-					if ( contentTheme && ( !collapsibleSet.length || collapsible.jqmData( "collapsible-last" ) ) ) {
+			} )
+			.bind( "expand", function( event ) {
+				if ( ! event.isDefaultPrevented() ) {
+					event.preventDefault();
+					collapsibleHeading
+						.removeClass( "ui-collapsible-heading-collapsed" )
+						.find( ".ui-collapsible-heading-status" ).text( o.collapseCueText );
+
+					collapsibleHeading.find( ".ui-icon" ).removeClass( "ui-icon-plus" ).addClass( "ui-icon-minus" );
+					collapsibleContent.removeClass( "ui-collapsible-content-collapsed" ).attr( "aria-hidden", false );
+
+					if ( collapsibleContain.jqmData( "collapsible-last" ) ) {
 						collapsibleHeading
 							.find( "a" ).first().add( collapsibleHeading.find( ".ui-btn-inner" ) )
 							.toggleClass( "ui-corner-bottom", isCollapse );
@@ -103,16 +121,28 @@ $.widget( "mobile.collapsible", $.mobile.widget, {
 				var type = collapsibleHeading.is( ".ui-collapsible-heading-collapsed" ) ?
 										"expand" : "collapse";
 
-				collapsible.trigger( type );
+			var set = collapsibleParent.find( ":jqmData(role='collapsible')" );
 
 				event.preventDefault();
 			});
 	}
 });
 
-//auto self-init widgets
-$( document ).bind( "pagecreate create", function( e ){
-	$( $.mobile.collapsible.prototype.options.initSelector, e.target ).collapsible();
-});
-
+			set.last().jqmData( "collapsible-last", true );
+		}
+		
+		if ( ! collapsibleParent.length ) {
+        collapsibleHeading
+          .find( "a:eq(0)" )
+            .addClass( "ui-corner-all" )
+            .find( ".ui-btn-inner" )
+              .addClass( "ui-corner-all" );
+      }
+      else {
+        if ( collapsibleContain.jqmData( "collapsible-last" ) ) {
+          collapsibleHeading
+            .find( "a:eq(0), .ui-btn-inner" )
+              .addClass( "ui-corner-bottom" );
+        }
+      }
 })( jQuery );
